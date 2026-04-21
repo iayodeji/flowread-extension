@@ -37,9 +37,11 @@
   // DOM refs
   let $style = null;
   let $fonts = null;
+  let $uiStyle = null;
   let $ruler = null;
   let $focusTop = null;
   let $focusBot = null;
+  let $live = null;
 
   // Autopace
   let paceTimer = null;
@@ -66,21 +68,26 @@
 
   // ── Main enable / disable ─────────────────────────────────────────────────
   async function enable(s) {
-    disable(); // clean slate
-    settings = s;
-    active = true;
+    if (!active) {
+      settings = s;
+      active = true;
 
-    injectFonts(s);
-    injectStyles(s);
-    if (s.bionic) applyBionic();
-    if (s.ruler || s.focusMode) buildRuler(s);
-    if (s.focusMode) buildFocusOverlay();
-    if (s.autopace) await startAutopace(s);
+      injectUiStyles();
+      injectFonts(s);
+      injectStyles(s);
+      ensureLiveRegion();
+      if (s.bionic) applyBionic();
+      if (s.ruler || s.focusMode) buildRuler(s);
+      if (s.focusMode) buildFocusOverlay();
+      if (s.autopace) await startAutopace(s);
 
-    document.addEventListener('mousemove', onMouseMove, { passive: true });
+      document.addEventListener('mousemove', onMouseMove, { passive: true });
+      loadPretext();
+      announce('FlowRead enabled.');
+      return;
+    }
 
-    // Load pretext in background — ruler will upgrade itself once loaded
-    loadPretext();
+    await applySettings(s);
   }
 
   function disable() {
@@ -89,9 +96,11 @@
 
     $style?.remove();    $style = null;
     $fonts?.remove();    $fonts = null;
+    $uiStyle?.remove();  $uiStyle = null;
     $ruler?.remove();    $ruler = null;
     $focusTop?.remove(); $focusTop = null;
     $focusBot?.remove(); $focusBot = null;
+    $live?.remove();     $live = null;
 
     stopAutopace();
     removeBionic();
@@ -99,11 +108,77 @@
     currentParagraph = null;
 
     document.removeEventListener('mousemove', onMouseMove);
+    announce('FlowRead disabled.');
+  }
+
+  async function applySettings(nextSettings) {
+    const prev = settings || {};
+    settings = nextSettings;
+
+    injectFonts(nextSettings);
+    injectStyles(nextSettings);
+
+    if (prev.bionic !== nextSettings.bionic) {
+      if (nextSettings.bionic) applyBionic();
+      else removeBionic();
+    }
+
+    if (nextSettings.ruler || nextSettings.focusMode) {
+      if (!$ruler) buildRuler(nextSettings);
+      $ruler.style.background = nextSettings.rulerColor;
+      $ruler.style.opacity = String(nextSettings.rulerOpacity);
+      $ruler.style.height = `${nextSettings.fontSize * nextSettings.lineHeight}px`;
+    } else {
+      $ruler?.remove();
+      $ruler = null;
+    }
+
+    if (nextSettings.focusMode) {
+      if (!$focusTop || !$focusBot) buildFocusOverlay();
+    } else {
+      $focusTop?.remove();
+      $focusBot?.remove();
+      $focusTop = null;
+      $focusBot = null;
+    }
+
+    if (nextSettings.autopace) {
+      await startAutopace(nextSettings);
+    } else {
+      stopAutopace();
+    }
+
+    preparedCache = new WeakMap();
+    announce('FlowRead settings updated.');
+  }
+
+  function ensureLiveRegion() {
+    if ($live) return;
+    $live = document.createElement('div');
+    $live.id = '__flowread_live__';
+    $live.setAttribute('aria-live', 'polite');
+    $live.setAttribute('aria-atomic', 'true');
+    $live.style.position = 'fixed';
+    $live.style.width = '1px';
+    $live.style.height = '1px';
+    $live.style.overflow = 'hidden';
+    $live.style.clipPath = 'inset(50%)';
+    $live.style.whiteSpace = 'nowrap';
+    $live.style.pointerEvents = 'none';
+    document.body.appendChild($live);
+  }
+
+  function announce(message) {
+    if (!$live) return;
+    $live.textContent = '';
+    $live.textContent = message;
   }
 
   // ── Style injection ───────────────────────────────────────────────────────
   function injectFonts(s) {
     const f = FONTS[s.font];
+    $fonts?.remove();
+    $fonts = null;
     if (!f) return;
     $fonts = document.createElement('style');
     $fonts.id = '__flowread_fonts__';
@@ -117,7 +192,28 @@
     document.head.appendChild($fonts);
   }
 
+  function injectUiStyles() {
+    $uiStyle?.remove();
+    $uiStyle = document.createElement('style');
+    $uiStyle.id = '__flowread_ui_styles__';
+    $uiStyle.textContent = `
+      :root {
+        --fr-bg-overlay: rgba(249, 248, 246, 0.97);
+        --fr-overlay-dim: rgba(28, 27, 25, 0.56);
+        --fr-transition: 150ms ease;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #__flowread_ruler__, #__flowread_focus_top__, #__flowread_focus_bot__ {
+          transition: none !important;
+        }
+      }
+    `;
+    document.head.appendChild($uiStyle);
+  }
+
   function injectStyles(s) {
+    $style?.remove();
+    $style = null;
     const f = FONTS[s.font];
     const fontFamily = f ? `'${f.name}', Georgia, serif` : null;
     const { bg, fg } = BG[s.bgColor] || {};
@@ -143,6 +239,7 @@
 
   // ── Living Ruler ──────────────────────────────────────────────────────────
   function buildRuler(s) {
+    $ruler?.remove();
     $ruler = document.createElement('div');
     $ruler.id = '__flowread_ruler__';
     Object.assign($ruler.style, {
@@ -154,24 +251,28 @@
       opacity: String(s.rulerOpacity),
       pointerEvents: 'none',
       zIndex: '2147483640',
-      transition: 'top 0.07s ease-out, height 0.07s ease-out',
+      transition: 'top var(--fr-transition), height var(--fr-transition)',
       mixBlendMode: 'multiply',
     });
     document.body.appendChild($ruler);
   }
 
   function buildFocusOverlay() {
+    $focusTop?.remove();
+    $focusBot?.remove();
     $focusTop = document.createElement('div');
+    $focusTop.id = '__flowread_focus_top__';
     Object.assign($focusTop.style, {
       position: 'fixed', left: '0', top: '0', width: '100%', height: '0',
-      background: 'rgba(0,0,0,0.6)', pointerEvents: 'none',
-      zIndex: '2147483639', transition: 'height 0.07s ease-out',
+      background: 'var(--fr-overlay-dim)', pointerEvents: 'none',
+      zIndex: '2147483639', transition: 'height var(--fr-transition)',
     });
     $focusBot = document.createElement('div');
+    $focusBot.id = '__flowread_focus_bot__';
     Object.assign($focusBot.style, {
       position: 'fixed', left: '0', top: '100vh', width: '100%', height: '100vh',
-      background: 'rgba(0,0,0,0.6)', pointerEvents: 'none',
-      zIndex: '2147483639', transition: 'top 0.07s ease-out',
+      background: 'var(--fr-overlay-dim)', pointerEvents: 'none',
+      zIndex: '2147483639', transition: 'top var(--fr-transition)',
     });
     document.body.appendChild($focusTop);
     document.body.appendChild($focusBot);
@@ -355,7 +456,7 @@
       else disable();
     }
     if (msg.type === 'FLOWREAD_SETTINGS') {
-      if (active) enable(msg.settings); // re-apply with new settings
+      if (active) applySettings(msg.settings);
     }
     return false;
   });

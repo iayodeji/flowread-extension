@@ -33,6 +33,51 @@
 
     <p class="fr-error" id="error-banner" hidden>⚠ Could not update the active tab.</p>
 
+    <section class="fr-view" id="onboarding-view" aria-label="Onboarding" hidden>
+      <div class="fr-section fr-section--last">
+        <div class="fr-section__title-wrap">
+          <h2 class="fr-section__title">Welcome to FlowRead</h2>
+          <p class="fr-section__hint">Set up in three quick steps.</p>
+        </div>
+
+        <div class="fr-onboarding-steps" id="onboarding-steps" role="tablist" aria-label="Onboarding steps">
+          <button type="button" class="fr-onboarding-step is-active" data-step="0" aria-selected="true">1</button>
+          <button type="button" class="fr-onboarding-step" data-step="1" aria-selected="false">2</button>
+          <button type="button" class="fr-onboarding-step" data-step="2" aria-selected="false">3</button>
+        </div>
+
+        <div class="fr-onboarding-panel" id="onboarding-step-0">
+          <p class="fr-onboarding-title">What do you need most?</p>
+          <div class="fr-preset-grid">
+            <button type="button" class="fr-preset" data-onboard-goal="gentle">Reduce crowding</button>
+            <button type="button" class="fr-preset" data-onboard-goal="focus">Improve focus</button>
+            <button type="button" class="fr-preset" data-onboard-goal="contrast">High contrast</button>
+          </div>
+        </div>
+
+        <div class="fr-onboarding-panel" id="onboarding-step-1" hidden>
+          <p class="fr-onboarding-title">Pick your base font</p>
+          <div class="fr-pill-group">
+            <button type="button" class="fr-pill" data-onboard-font="lexend">Lexend</button>
+            <button type="button" class="fr-pill" data-onboard-font="opendyslexic">OpenDyslexic</button>
+            <button type="button" class="fr-pill" data-onboard-font="atkinson">Atkinson</button>
+          </div>
+        </div>
+
+        <div class="fr-onboarding-panel" id="onboarding-step-2" hidden>
+          <p class="fr-onboarding-title">Preview</p>
+          <p class="fr-onboarding-preview" id="onboarding-preview">Preset: Gentle, Font: Lexend</p>
+          <p class="fr-onboarding-note">You can fine-tune everything later in Advanced settings.</p>
+        </div>
+
+        <div class="fr-onboarding-actions">
+          <button type="button" class="fr-btn-ghost" id="onboarding-back-btn">Back</button>
+          <button type="button" class="fr-btn-primary" id="onboarding-next-btn">Next</button>
+          <button type="button" class="fr-reset-btn" id="onboarding-skip-btn">Skip setup</button>
+        </div>
+      </div>
+    </section>
+
     <section class="fr-view is-active" id="home-view" aria-label="Home">
       <div class="fr-section">
         <div class="fr-section__title-wrap">
@@ -113,10 +158,74 @@
           <input class="fr-slider" type="range" id="letter-spacing" min="0" max="0.2" step="0.01" value="0.05" aria-label="Letter spacing">
           <span class="fr-slider-row__value" id="letter-spacing-val">0.05em</span>
         </label>
+
+        <label class="fr-slider-row" for="word-spacing">
+          <span class="fr-slider-row__label">Word spacing</span>
+          <input class="fr-slider" type="range" id="word-spacing" min="0" max="0.3" step="0.01" value="0.10" aria-label="Word spacing">
+          <span class="fr-slider-row__value" id="word-spacing-val">0.10em</span>
+        </label>
+
+        <div class="fr-setting-row fr-setting-row--tight">
+          <div class="fr-setting-row__label">
+            <span class="fr-setting-row__name">Column width</span>
+            <span class="fr-setting-row__hint">Keep line length easier to scan</span>
+          </div>
+          <button
+            type="button"
+            id="toggle-column"
+            class="fr-toggle"
+            role="switch"
+            aria-checked="false"
+            aria-controls="column-width-row"
+            aria-expanded="false"
+            aria-label="Toggle column width"
+          >
+            <span class="fr-toggle__track" aria-hidden="true"><span class="fr-toggle__thumb"></span></span>
+          </button>
+        </div>
+
+        <label class="fr-slider-row" id="column-width-row" for="column-width" hidden>
+          <span class="fr-slider-row__label">Width</span>
+          <input class="fr-slider" type="range" id="column-width" min="520" max="900" step="10" value="680" aria-label="Column width">
+          <span class="fr-slider-row__value" id="column-width-val">680px</span>
+        </label>
       </div>
 
       <div class="fr-section">
         <h2 class="fr-section__title">Reading Tools</h2>
+
+        <div class="fr-setting-row">
+          <div class="fr-setting-row__label">
+            <span class="fr-setting-row__name">Living ruler</span>
+            <span class="fr-setting-row__hint">Track your current line</span>
+          </div>
+          <button
+            type="button"
+            id="toggle-ruler-advanced"
+            class="fr-toggle"
+            role="switch"
+            aria-checked="false"
+            aria-controls="ruler-controls"
+            aria-expanded="false"
+            aria-label="Toggle living ruler"
+          >
+            <span class="fr-toggle__track" aria-hidden="true"><span class="fr-toggle__thumb"></span></span>
+          </button>
+        </div>
+
+        <div class="fr-control-block" id="ruler-controls" hidden>
+          <label class="fr-slider-row" for="ruler-opacity">
+            <span class="fr-slider-row__label">Ruler opacity</span>
+            <input class="fr-slider" type="range" id="ruler-opacity" min="0.1" max="0.8" step="0.05" value="0.25" aria-label="Ruler opacity">
+            <span class="fr-slider-row__value" id="ruler-opacity-val">0.25</span>
+          </label>
+
+          <label class="fr-slider-row" for="ruler-color">
+            <span class="fr-slider-row__label">Ruler color</span>
+            <input class="fr-color-input" type="color" id="ruler-color" value="#ffd700" aria-label="Ruler color">
+            <span class="fr-slider-row__value" id="ruler-color-val">#FFD700</span>
+          </label>
+        </div>
 
         <div class="fr-setting-row">
           <div class="fr-setting-row__label">
@@ -133,7 +242,16 @@
             <span class="fr-setting-row__name">Autopace</span>
             <span class="fr-setting-row__hint">Move line focus automatically</span>
           </div>
-          <button type="button" id="toggle-autopace" class="fr-toggle" role="switch" aria-checked="false" aria-label="Toggle autopace">
+          <button
+            type="button"
+            id="toggle-autopace"
+            class="fr-toggle"
+            role="switch"
+            aria-checked="false"
+            aria-controls="wpm-row"
+            aria-expanded="false"
+            aria-label="Toggle autopace"
+          >
             <span class="fr-toggle__track" aria-hidden="true"><span class="fr-toggle__thumb"></span></span>
           </button>
         </div>
@@ -152,7 +270,7 @@
       </div>
     </section>
 
-    <footer class="fr-popup__footer">
+    <footer class="fr-popup__footer" id="popup-footer">
       <button type="button" class="fr-btn-ghost" id="view-toggle-btn">Advanced settings</button>
       <button type="button" class="fr-reset-btn" id="reset-btn">Reset</button>
     </footer>

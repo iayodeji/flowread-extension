@@ -17,10 +17,19 @@
   const LETTER_SPC   = 0.06;     // em — 25% crowding reduction per 2025 research
   const COL_W        = 640;       // max reading column px
   const PARA_ALPHA   = 0.07;      // opacity of non-active paragraphs
-  const RULER_COLOR  = '#ffd700';
+  const RULER_COLOR  = '#E4B100';
   const RULER_ALPHA  = 0.22;
-  const TRANSITION   = '0.09s ease-out';
+  const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const TRANSITION   = REDUCED_MOTION ? '0s' : '0.12s ease';
   const FONT_STACK   = "'FlowRead-Lexend', Georgia, serif";
+  const TOKENS = {
+    bg: '#1C1B19',
+    text: '#F0EDE8',
+    textMuted: '#9E9890',
+    border: '#38352E',
+    accent: '#3D6B4F',
+    accentSoft: '#1F3027',
+  };
 
   // ── Selectors — where articles live on the web ─────────────────────────────
   const ARTICLE_SELECTORS = [
@@ -69,10 +78,12 @@
   // Overlay: fixed full-screen dark container
   const overlay = document.createElement('div');
   overlay.id = '__fr_focused__';
+  overlay.setAttribute('role', 'region');
+  overlay.setAttribute('aria-label', 'FlowRead focused reading mode');
   Object.assign(overlay.style, {
     position: 'fixed', inset: '0',
     zIndex: '2147483640',
-    background: '#0d0d12',
+    background: TOKENS.bg,
     overflowY: 'auto',
     overflowX: 'hidden',
   });
@@ -104,29 +115,57 @@
 
   // Close button
   const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Exit focused mode');
+  closeBtn.title = 'Exit focused mode (Esc)';
   Object.assign(closeBtn.style, {
     position: 'fixed', top: '18px', right: '22px',
     zIndex: '2147483642',
-    background: 'rgba(255,255,255,0.06)',
-    color: 'rgba(255,255,255,0.5)',
-    border: '0.5px solid rgba(255,255,255,0.12)',
-    borderRadius: '8px',
-    padding: '7px 13px',
-    fontSize: '11px',
-    letterSpacing: '0.06em',
+    minWidth: '44px',
+    minHeight: '44px',
+    background: TOKENS.accentSoft,
+    color: TOKENS.text,
+    border: `1px solid ${TOKENS.border}`,
+    borderRadius: '10px',
+    padding: '9px 14px',
+    fontSize: '12px',
+    letterSpacing: '0.02em',
     cursor: 'pointer',
-    fontFamily: 'monospace',
+    fontFamily: 'DM Sans, Segoe UI, sans-serif',
   });
-  closeBtn.textContent = '✕  exit focused mode';
+  closeBtn.textContent = 'Exit focused mode';
+
+  closeBtn.addEventListener('focus', () => {
+    closeBtn.style.outline = `2px solid ${TOKENS.accent}`;
+    closeBtn.style.outlineOffset = '2px';
+  });
+  closeBtn.addEventListener('blur', () => {
+    closeBtn.style.outline = 'none';
+  });
+
+  // Keyboard hint
+  const keyboardHint = document.createElement('p');
+  keyboardHint.textContent = 'Use J/K or Arrow keys to move. Press Esc to exit.';
+  Object.assign(keyboardHint.style, {
+    position: 'fixed',
+    top: '22px',
+    left: '22px',
+    margin: '0',
+    fontSize: '12px',
+    color: TOKENS.textMuted,
+    zIndex: '2147483642',
+    pointerEvents: 'none',
+    fontFamily: 'DM Sans, Segoe UI, sans-serif',
+  });
 
   // Progress indicator
   const progress = document.createElement('div');
   Object.assign(progress.style, {
     position: 'fixed', bottom: '0', left: '0',
     height: '2px', width: '0%',
-    background: '#10b981',
+    background: TOKENS.accent,
     zIndex: '2147483642',
-    transition: 'width 0.3s ease',
+    transition: REDUCED_MOTION ? 'none' : 'width 0.3s ease',
     pointerEvents: 'none',
   });
 
@@ -134,19 +173,34 @@
   const paraLabel = document.createElement('div');
   Object.assign(paraLabel.style, {
     position: 'fixed', bottom: '12px', right: '22px',
-    fontSize: '10px',
-    color: 'rgba(255,255,255,0.2)',
-    letterSpacing: '0.08em',
-    fontFamily: 'monospace',
+    fontSize: '12px',
+    color: TOKENS.textMuted,
+    letterSpacing: '0.02em',
+    fontFamily: 'DM Sans, Segoe UI, sans-serif',
     zIndex: '2147483642',
     pointerEvents: 'none',
+  });
+
+  // Screen-reader status updates for paragraph progress
+  const liveRegion = document.createElement('div');
+  liveRegion.setAttribute('aria-live', 'polite');
+  liveRegion.setAttribute('aria-atomic', 'true');
+  Object.assign(liveRegion.style, {
+    position: 'fixed',
+    width: '1px',
+    height: '1px',
+    overflow: 'hidden',
+    clipPath: 'inset(50%)',
+    whiteSpace: 'nowrap',
   });
 
   document.body.appendChild(overlay);
   document.body.appendChild(ruler);
   document.body.appendChild(closeBtn);
+  document.body.appendChild(keyboardHint);
   document.body.appendChild(progress);
   document.body.appendChild(paraLabel);
+  document.body.appendChild(liveRegion);
   overlay.appendChild(col);
 
   // ── Render paragraphs into DOM ─────────────────────────────────────────────
@@ -169,7 +223,7 @@
       fontWeight: para.isHeading ? '600' : '400',
       margin: '0 0 ' + (para.isHeading ? '28px' : '22px') + ' 0',
       opacity: PARA_ALPHA + '',
-      transition: 'opacity 0.2s ease',
+      transition: REDUCED_MOTION ? 'none' : 'opacity 0.2s ease',
       cursor: 'default',
       userSelect: 'text',         // keep text selectable
       WebkitUserSelect: 'text',
@@ -220,6 +274,7 @@
     const pct = paras.length > 1 ? Math.round((idx / (paras.length - 1)) * 100) : 100;
     progress.style.width = pct + '%';
     paraLabel.textContent = (idx + 1) + ' / ' + paras.length;
+    liveRegion.textContent = `Paragraph ${idx + 1} of ${paras.length}`;
   }
 
   // ── Mouse → ruler ──────────────────────────────────────────────────────────
@@ -321,6 +376,8 @@
     closeBtn.remove();
     progress.remove();
     paraLabel.remove();
+    keyboardHint.remove();
+    liveRegion.remove();
     document.removeEventListener('keydown', onKey);
     delete window.__frFocused;
   }
