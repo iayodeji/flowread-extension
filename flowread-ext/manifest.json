@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "FlowRead — Reading for your brain",
+  "description": "Pretext-powered reading aid for dyslexia and ADHD. Zero-lag ruler, focused mode, bionic reading.",
+  "version": "0.3.0",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "focused.js",
+        "live.js",
+        "pretext-layout.js",
+        "pretext-bidi.js",
+        "pretext-analysis.js",
+        "pretext-measurement.js",
+        "pretext-line-break.js",
+        "fonts/OpenDyslexic-Regular.woff2",
+        "fonts/Lexend-Regular.woff2",
+        "fonts/AtkinsonHyperlegible-Regular.woff2"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
